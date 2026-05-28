@@ -1,0 +1,16 @@
+{
+  "name": "G2Leafy Codespace",
+  "dockerComposeFile": "../docker-compose.yml",
+  "service": "panel",
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+  "shutdownAction": "stopCompose",
+  "forwardPorts": [8080],
+  "postCreateCommand": "npm install",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
+    }
+  }
+}
