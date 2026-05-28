@@ -15,15 +15,18 @@
   },
   "containerEnv": {
     "PANEL_PORT": "8080",
-    "XRAY_ENABLED": "0"
+    "XRAY_ENABLED": "1"
   },
-  "postCreateCommand": "npm install",
-  "postStartCommand": "bash -lc 'pkill -f \"node backend.js\" || true; mkdir -p data/xray; nohup npm start > /tmp/g2leafy.log 2>&1 &'",
+  "postCreateCommand": "npm install && npm install -g nodemon",
+  "postStartCommand": "bash -lc 'mkdir -p data/xray; nohup nodemon --watch backend.js backend.js > /tmp/g2leafy.log 2>&1 &'",
   "customizations": {
     "vscode": {
       "settings": {
         "terminal.integrated.defaultProfile.linux": "bash"
-      }
+      },
+      "extensions": [
+        "ms-vscode-remote.remote-containers"
+      ]
     }
   }
 }
