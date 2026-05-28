@@ -6,12 +6,19 @@
   },
   "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
   "forwardPorts": [8080],
+  "portsAttributes": {
+    "8080": {
+      "label": "G2Leafy Panel",
+      "onAutoForward": "openBrowserOnce",
+      "visibility": "public"
+    }
+  },
   "containerEnv": {
     "PANEL_PORT": "8080",
     "XRAY_ENABLED": "0"
   },
   "postCreateCommand": "npm install",
-  "postStartCommand": "pkill -f \"node backend.js\" || true; nohup node backend.js > /tmp/g2leafy.log 2>&1 &",
+  "postStartCommand": "bash -lc 'pkill -f \"node backend.js\" || true; mkdir -p data/xray; nohup npm start > /tmp/g2leafy.log 2>&1 &'",
   "customizations": {
     "vscode": {
       "settings": {
