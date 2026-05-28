@@ -2378,7 +2378,8 @@
         let ipProfiles = [];
         function renderLocations() {
             const tb = document.querySelector('#tbl-locations tbody'), sel = document.getElementById('c-profile');
-            tb.innerHTML = ''; sel.innerHTML = '';
+            if(!tb) return;
+            tb.innerHTML = ''; if(sel) sel.innerHTML = '';
             ipProfiles.forEach(p => {
                 const latencyBadge = p.latency ? `<span class="tag tag-green">${p.latency}ms</span>` : `<span style="color:var(--text-muted);font-size:0.75rem;">—</span>`;
                 tb.innerHTML += `<tr>
@@ -2393,7 +2394,7 @@
                         ${p.lock ? '' : `<button class="btn btn-icon btn-danger" onclick="deleteLocation(${p.id})"><i class="fa-solid fa-trash"></i></button>`}
                     </td>
                 </tr>`;
-                sel.innerHTML += `<option value="${p.id}">${p.name}</option>`;
+                if(sel) sel.innerHTML += `<option value="${p.id}">${p.name}</option>`;
             });
         }
         function openLocationModal() { document.getElementById('loc-edit-id').value = ''; document.getElementById('loc-name').value = ''; document.getElementById('loc-ip').value = ''; document.getElementById('loc-cdn').value = 'Cloudflare'; document.getElementById('loc-port').value = 443; document.getElementById('loc-latency').value = ''; document.getElementById('loc-notes').value = ''; openModal('modal-location'); }
@@ -3378,7 +3379,8 @@
             syncing: false,
             stateHash: null,
             eventSource: null,
-            debounceHandle: null
+            debounceHandle: null,
+            retryTimer: null
         };
 
         function serializePanelState() {
@@ -3497,6 +3499,10 @@
                 backendSync.connected = true;
                 logCore('[INFO] Backend synchronization enabled.');
                 showToast('Backend connected.', 'success');
+                if(backendSync.retryTimer) {
+                    clearInterval(backendSync.retryTimer);
+                    backendSync.retryTimer = null;
+                }
                 if(backendSync.eventSource) backendSync.eventSource.close();
                 backendSync.eventSource = new EventSource('/api/events');
                 backendSync.eventSource.addEventListener('telemetry', (ev) => {
@@ -3513,8 +3519,14 @@
                 hookMutations();
             } catch (err) {
                 backendSync.connected = false;
-                logCore(`[WARN] Backend unavailable, using local mode (${err.message || err}).`);
-                showToast('Backend not reachable, local mode active.', 'info');
+                logCore(`[WARN] Backend unavailable (${err.message || err}).`);
+                console.error('Backend sync init failed:', err);
+                if(!backendSync.retryTimer) {
+                    showToast('Backend not ready yet, retrying...', 'info');
+                    backendSync.retryTimer = setInterval(() => {
+                        if(!backendSync.connected) initBackendSync();
+                    }, 3000);
+                }
             }
         }
 
@@ -3530,15 +3542,17 @@
         const __legacySetXrayStatus = setXrayStatus;
         setXrayStatus = async function(action) {
             __legacySetXrayStatus(action);
-            if(!backendSync.connected) return;
             if(!['start','stop','restart'].includes(action)) return;
             try {
-                await fetch(`/api/xray/${action}`, {
+                const res = await fetch(`/api/xray/${action}`, {
                     method: 'POST',
                     headers: { 'X-Idempotency-Key': `${Date.now()}-${Math.random().toString(16).slice(2)}` }
                 });
+                if(!res.ok) throw new Error(`xray action failed: ${res.status}`);
+                backendSync.connected = true;
             } catch (err) {
                 logCore(`[WARN] Xray backend action failed: ${err.message || err}`);
+                console.error('Xray action error:', err);
             }
         };
 
